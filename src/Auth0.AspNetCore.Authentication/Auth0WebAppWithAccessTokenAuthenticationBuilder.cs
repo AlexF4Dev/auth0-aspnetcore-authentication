@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
+using System.Threading;
 
 namespace Auth0.AspNetCore.Authentication
 {
@@ -117,6 +118,10 @@ namespace Auth0.AspNetCore.Authentication
                 var optionsWithAccessToken = context.HttpContext.RequestServices.GetRequiredService<IOptionsMonitor<Auth0WebAppWithAccessTokenOptions>>().Get(authenticationScheme);
                 var oidcOptions = context.HttpContext.RequestServices.GetRequiredService<IOptionsMonitor<OpenIdConnectOptions>>().Get(authenticationScheme);
 
+                OpenIdConnectConfiguration configuration = await oidcOptions?.ConfigurationManager?.GetConfigurationAsync(CancellationToken.None);
+                var tokenEndpoint = configuration?.TokenEndpoint;
+
+                
                 if (context.Properties.Items.TryGetValue(".AuthScheme", out var authScheme))
                 {
                     if (!string.IsNullOrEmpty(authScheme) && authScheme != authenticationScheme)
@@ -141,7 +146,7 @@ namespace Auth0.AspNetCore.Authentication
 
                             if (isExpired && !string.IsNullOrWhiteSpace(refreshToken))
                             {
-                                var result = await RefreshTokens(options, refreshToken, oidcOptions.Backchannel);
+                                var result = await RefreshTokens(options, refreshToken, oidcOptions.Backchannel, tokenEndpoint);
 
                                 if (result != null)
                                 {
@@ -184,9 +189,9 @@ namespace Auth0.AspNetCore.Authentication
             };
         }
 
-        private static async Task<AccessTokenResponse?> RefreshTokens(Auth0WebAppOptions options, string refreshToken, HttpClient httpClient)
+        private static async Task<AccessTokenResponse?> RefreshTokens(Auth0WebAppOptions options, string refreshToken, HttpClient httpClient, string tokenEndpoint)
         {
-            var tokenClient = new TokenClient(httpClient);
+            var tokenClient = new TokenClient(httpClient, tokenEndpoint);
             
             return await tokenClient.Refresh(options, refreshToken);
         }

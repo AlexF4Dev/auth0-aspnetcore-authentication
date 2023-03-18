@@ -11,13 +11,14 @@ namespace Auth0.AspNetCore.Authentication
 {
     internal class TokenClient
     {
-        private readonly HttpClient _httpClient;
+        private readonly HttpClient? _httpClient;
+        private readonly string _tokenEndpoint;
         private readonly JsonSerializerOptions _jsonSerializerOptions = new JsonSerializerOptions()
         {
             IgnoreNullValues = true,
         };
 
-        public TokenClient(HttpClient httpClient)
+        public TokenClient(HttpClient httpClient, string? tokenEndpoint)
         {
             _httpClient = httpClient;
         }
@@ -33,8 +34,9 @@ namespace Auth0.AspNetCore.Authentication
             ApplyClientAuthentication(options, body);
 
             var requestContent = new FormUrlEncodedContent(body.Select(p => new KeyValuePair<string?, string?>(p.Key, p.Value ?? "")));
+            var tokenEndpoint = this._tokenEndpoint ?? $"https://{options.Domain}/oauth/token";
 
-            using (var request = new HttpRequestMessage(HttpMethod.Post, $"https://{options.Domain}/oauth/token") { Content = requestContent })
+            using (var request = new HttpRequestMessage(HttpMethod.Post, tokenEndpoint) { Content = requestContent })
             {
                 using (var response = await _httpClient.SendAsync(request).ConfigureAwait(false))
                 {
